@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Opportunity Scout — India Infrastructure Intelligence</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--text:#e6edf3;--text2:#8b949e;--text3:#656d76;
+  --green:#3fb950;--green-bg:#1f3829;
+  --yellow:#d29922;--yellow-bg:#2d2a0f;
+  --red:#f85149;--red-bg:#2d1b1b;
+  --blue:#58a6ff;--blue-bg:#0d2149;
+  --purple:#bc8cff;--purple-bg:#1e1232;
+  --teal:#39d353;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:1.5rem 0;display:flex;flex-direction:column}
+.logo{padding:0 1.25rem 1.5rem;border-bottom:1px solid var(--border);margin-bottom:1rem}
+.logo-name{font-size:15px;font-weight:600;color:var(--text)}
+.logo-tag{font-size:11px;color:var(--text2);margin-top:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 1.25rem;font-size:13px;color:var(--text2);cursor:pointer;border-left:2px solid transparent;transition:all .15s}
+.nav-item:hover{color:var(--text);background:var(--bg3)}
+.nav-item.active{color:var(--text);border-left-color:var(--green);background:var(--bg3)}
+.nav-icon{font-size:16px;width:18px;text-align:center}
+.nav-badge{margin-left:auto;font-size:10px;background:var(--green);color:#000;padding:1px 6px;border-radius:20px;font-weight:600}
+.nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);padding:1rem 1.25rem .4rem;margin-top:.5rem}
+.main{overflow-y:auto;padding:2rem}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem}
+.page-title{font-size:20px;font-weight:600;color:var(--text)}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-yellow{background:var(--yellow-bg);color:var(--yellow)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.run-btn{padding:7px 16px;background:var(--green);color:#000;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.run-btn:hover{opacity:.85}
+.run-btn:disabled{opacity:.4;cursor:not-allowed}
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem}
+.metric{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1.25rem}
+.metric-label{font-size:12px;color:var(--text2);margin-bottom:8px}
+.metric-val{font-size:24px;font-weight:600;color:var(--text);line-height:1}
+.metric-sub{font-size:12px;margin-top:5px}
+.up{color:var(--green)} .down{color:var(--red)} .neutral{color:var(--text2)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:1rem}
+.card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:13px;font-weight:600;color:var(--text)}
+.card-body{padding:1.25rem}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:0 0 10px;border-bottom:1px solid var(--border)}
+.table td{padding:10px 0;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+.table tr:last-child td{border-bottom:none}
+.score{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;font-size:13px;font-weight:600}
+.score-high{background:var(--green-bg);color:var(--green)}
+.score-med{background:var(--yellow-bg);color:var(--yellow)}
+.score-low{background:var(--red-bg);color:var(--red)}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin-right:4px;font-weight:500}
+.pill-green{background:var(--green-bg);color:var(--green)}
+.pill-blue{background:var(--blue-bg);color:var(--blue)}
+.pill-purple{background:var(--purple-bg);color:var(--purple)}
+.pill-yellow{background:var(--yellow-bg);color:var(--yellow)}
+.pill-red{background:var(--red-bg);color:var(--red)}
+.signal-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.signal-row:last-child{border-bottom:none}
+.sym{font-size:13px;font-weight:500;color:var(--text);min-width:110px}
+.sig-bar{flex:1;background:var(--bg3);border-radius:3px;height:5px;overflow:hidden}
+.sig-fill{height:100%;border-radius:3px;background:var(--green)}
+.sig-fill-y{height:100%;border-radius:3px;background:var(--yellow)}
+.sig-action{font-size:12px;min-width:140px;text-align:right;font-weight:500}
+.warn-row{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.warn-row:last-child{border-bottom:none;padding-bottom:0}
+.warn-lv{font-size:11px;padding:3px 8px;border-radius:4px;font-weight:600;white-space:nowrap;height:fit-content;min-width:60px;text-align:center}
+.warn-hi{background:var(--red-bg);color:var(--red)}
+.warn-md{background:var(--yellow-bg);color:var(--yellow)}
+.warn-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px}
+.warn-meta{font-size:12px;color:var(--text2);line-height:1.5}
+.warn-action{font-size:12px;color:var(--green);margin-top:4px}
+.progress-wrap{background:var(--bg3);border-radius:4px;height:8px;overflow:hidden;margin:8px 0}
+.progress-bar{height:100%;background:var(--green);border-radius:4px;transition:width .5s}
+.sub-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.sub-row:last-child{border-bottom:none}
+.sub-name{font-size:13px;color:var(--text)}
+.sub-price{font-size:13px;font-weight:600;color:var(--text)}
+.input{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;width:100%}
+.input:focus{border-color:var(--green)}
+.search-row{display:flex;gap:8px;margin-bottom:1rem}
+.search-btn{padding:8px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;cursor:pointer;font-family:inherit}
+.search-btn:hover{border-color:var(--green);color:var(--green)}
+.page{display:none} .page.active{display:block}
+.ticker{display:flex;gap:2rem;background:var(--bg2);border-bottom:1px solid var(--border);padding:.5rem 2rem;font-size:12px;overflow-x:auto;white-space:nowrap}
+.tick-sym{color:var(--text2)} .tick-val{color:var(--text);font-weight:500;margin:0 4px}
+.tick-chg{} 
+.insight-block{background:var(--bg3);border-left:3px solid var(--green);border-radius:0 6px 6px 0;padding:12px 16px;margin-bottom:10px;font-size:13px;color:var(--text2);line-height:1.7}
+.cmd-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cmd-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:1rem;cursor:pointer;transition:border-color .15s}
+.cmd-card:hover{border-color:var(--green)}
+.cmd-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px}
+.cmd-desc{font-size:12px;color:var(--text2);margin-bottom:8px}
+.cmd-code{font-family:'SF Mono',monospace;font-size:11px;background:var(--bg2);padding:3px 8px;border-radius:4px;color:var(--green)}
+.setup-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.setup-row:last-child{border-bottom:none}
+.loading{color:var(--text2);font-size:13px;padding:2rem;text-align:center}
+.pnl-p{color:var(--green);font-weight:500} .pnl-n{color:var(--red);font-weight:500}
+</style>
+</head>
+<body>
+<div class="ticker" id="ticker">
+  <span><span class="tick-sym">ADANIPORTS</span><span class="tick-val">₹1,285</span><span class="tick-chg up">+2.1%</span></span>
+  <span><span class="tick-sym">ADANIGREEN</span><span class="tick-val">₹1,852</span><span class="tick-chg up">+3.4%</span></span>
+  <span><span class="tick-sym">LT</span><span class="tick-val">₹3,720</span><span class="tick-chg down">-0.8%</span></span>
+  <span><span class="tick-sym">NTPC</span><span class="tick-val">₹385</span><span class="tick-chg up">+1.2%</span></span>
+  <span><span class="tick-sym">KNRCON</span><span class="tick-val">₹315</span><span class="tick-chg up">+4.2%</span></span>
+  <span><span class="tick-sym">IRB</span><span class="tick-val">₹72</span><span class="tick-chg down">-1.1%</span></span>
+  <span><span class="tick-sym">POLYCAB</span><span class="tick-val">₹5,210</span><span class="tick-chg up">+0.9%</span></span>
+  <span><span class="tick-sym">WAAREEENER</span><span class="tick-val">₹2,850</span><span class="tick-chg up">+5.3%</span></span>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-name">&#128268; Opportunity Scout</div>
+      <div class="logo-tag">India Infrastructure Intelligence</div>
+    </div>
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="nav('overview',this)"><span class="nav-icon">&#9680;</span>Dashboard</div>
+    <div class="nav-section">Phases</div>
+    <div class="nav-item" onclick="nav('scout',this)"><span class="nav-icon">&#128270;</span>Phase 1 — Scout<span class="nav-badge" id="nb-scout">0</span></div>
+    <div class="nav-item" onclick="nav('market',this)"><span class="nav-icon">&#127963;</span>Phase 3 — Market<span class="nav-badge" id="nb-market" style="background:var(--yellow);color:#000">0</span></div>
+    <div class="nav-item" onclick="nav('stocks',this)"><span class="nav-icon">&#128200;</span>Phase 4 — Stocks</div>
+    <div class="nav-item" onclick="nav('revenue',this)"><span class="nav-icon">&#128176;</span>Phase 2 — Revenue<span class="nav-badge" id="nb-rev" style="background:var(--blue);color:#000">0</span></div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="nav('run',this)"><span class="nav-icon">&#9654;</span>Run Pipeline</div>
+    <div class="nav-item" onclick="nav('setup',this)"><span class="nav-icon">&#9881;</span>Setup</div>
+    <div style="margin-top:auto;padding:1rem 1.25rem;font-size:11px;color:var(--text3)">
+      Last run: <span id="last-run">Never</span>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- OVERVIEW PAGE -->
+    <div id="page-overview" class="page active">
+      <div class="topbar">
+        <div class="page-title">Dashboard</div>
+        <div class="topbar-right">
+          <span class="badge badge-green" id="system-status">&#9679; Live</span>
+          <button class="run-btn" id="run-all-btn" onclick="runPipeline('full')">Run All Phases</button>
+        </div>
+      </div>
+      <div class="metric-grid" id="ov-metrics">
+        <div class="metric"><div class="metric-label">Tenders tracked</div><div class="metric-val" id="ov-tenders">--</div><div class="metric-sub neutral">Loading...</div></div>
+        <div class="metric"><div class="metric-label">Early warnings</div><div class="metric-val" id="ov-warnings">--</div><div class="metric-sub neutral">Loading...</div></div>
+        <div class="metric"><div class="metric-label">Stock signals</div><div class="metric-val" id="ov-signals">--</div><div class="metric-sub neutral">Loading...</div></div>
+        <div class="metric"><div class="metric-label">Monthly revenue</div><div class="metric-val" id="ov-mrr">--</div><div class="metric-sub neutral">Loading...</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Top opportunities</span><span class="badge badge-green" id="ov-opp-count">0 today</span></div>
+          <div class="card-body" id="ov-opps"><div class="loading">Loading...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Early warnings</span></div>
+          <div class="card-body" id="ov-warns"><div class="loading">Loading...</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Sector intelligence</span></div>
+        <div class="card-body" id="ov-insights"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- SCOUT PAGE -->
+    <div id="page-scout" class="page">
+      <div class="topbar">
+        <div class="page-title">Phase 1 — Opportunity Scout</div>
+        <button class="run-btn" onclick="runPipeline('scout')">Run Scout</button>
+      </div>
+      <div class="search-row">
+        <input class="input" id="search-input" placeholder="Search tenders: solar energy Hyderabad, port logistics AP...">
+        <button class="search-btn" onclick="searchTenders()">Search</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Tenders database</span></div>
+        <div class="card-body" id="scout-tenders"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- MARKET PAGE -->
+    <div id="page-market" class="page">
+      <div class="topbar">
+        <div class="page-title">Phase 3 — Market Intelligence</div>
+        <button class="run-btn" onclick="runPipeline('market')">Scan BSE</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Early warnings — act now</span></div>
+        <div class="card-body" id="market-warnings"><div class="loading">Loading...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Smart money movements</span></div>
+        <div class="card-body" id="market-bulk"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- STOCKS PAGE -->
+    <div id="page-stocks" class="page">
+      <div class="topbar">
+        <div class="page-title">Phase 4 — Stock Intelligence</div>
+        <button class="run-btn" onclick="runPipeline('stocks')">Detect Signals</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Buy signals this week</span></div>
+        <div class="card-body" id="stock-signals"><div class="loading">Loading...</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Paper portfolio</span></div>
+          <div class="card-body" id="stock-portfolio"><div class="loading">Loading...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Performance</span></div>
+          <div class="card-body" id="stock-perf"><div class="loading">Loading...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVENUE PAGE -->
+    <div id="page-revenue" class="page">
+      <div class="topbar">
+        <div class="page-title">Phase 2 — Revenue</div>
+        <button class="run-btn" onclick="runPipeline('monetize')">Run Monetize</button>
+      </div>
+      <div class="metric-grid" id="rev-metrics">
+        <div class="metric"><div class="metric-label">MRR</div><div class="metric-val" id="rev-mrr">--</div></div>
+        <div class="metric"><div class="metric-label">Subscribers</div><div class="metric-val" id="rev-subs">--</div></div>
+        <div class="metric"><div class="metric-label">Leads contacted</div><div class="metric-val" id="rev-leads">--</div></div>
+        <div class="metric"><div class="metric-label">Conversion</div><div class="metric-val" id="rev-conv">--</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Goal: ₹50,000 MRR</span></div>
+        <div class="card-body" id="rev-goal"><div class="loading">Loading...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Active subscribers</span></div>
+        <div class="card-body" id="rev-sub-list"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- RUN PAGE -->
+    <div id="page-run" class="page">
+      <div class="topbar"><div class="page-title">Run Pipeline</div></div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-header"><span class="card-title">Pipeline status</span><span id="pipe-status-badge" class="badge badge-green">Idle</span></div>
+        <div class="card-body"><div style="font-size:13px;color:var(--text2)" id="pipe-step">System ready. Click any command below.</div></div>
+      </div>
+      <div class="cmd-grid">
+        <div class="cmd-card" onclick="runPipeline('scout')"><div class="cmd-name">&#128270; Scout tenders</div><div class="cmd-desc">Scrape CPPP, GeM, news — get today's opportunities</div><div class="cmd-code">python main.py</div></div>
+        <div class="cmd-card" onclick="runPipeline('market')"><div class="cmd-name">&#127963; Market intelligence</div><div class="cmd-desc">Scan BSE filings, bulk deals, price signals</div><div class="cmd-code">python main.py --market</div></div>
+        <div class="cmd-card" onclick="runPipeline('stocks')"><div class="cmd-name">&#128200; Stock signals</div><div class="cmd-desc">Detect buy signals, execute paper trades</div><div class="cmd-code">python main.py --stocks</div></div>
+        <div class="cmd-card" onclick="runPipeline('monetize')"><div class="cmd-name">&#128176; Monetize</div><div class="cmd-desc">Publish channel, generate leads, newsletter</div><div class="cmd-code">python main.py --monetize</div></div>
+        <div class="cmd-card" onclick="runPipeline('full')"><div class="cmd-name">&#9654; Run everything</div><div class="cmd-desc">All phases in sequence — full intelligence cycle</div><div class="cmd-code">python main.py --full</div></div>
+        <div class="cmd-card" onclick="nav('setup',null)"><div class="cmd-name">&#9881; Setup & config</div><div class="cmd-desc">Configure API keys, Telegram, Razorpay</div><div class="cmd-code">nano .env</div></div>
+      </div>
+    </div>
+
+    <!-- SETUP PAGE -->
+    <div id="page-setup" class="page">
+      <div class="topbar"><div class="page-title">Setup Status</div></div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Configuration</span></div>
+        <div class="card-body" id="setup-status"><div class="loading">Checking...</div></div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-header"><span class="card-title">Quick setup guide</span></div>
+        <div class="card-body">
+          <div class="insight-block">1. Get free <b>Groq API key</b> from console.groq.com — takes 2 minutes</div>
+          <div class="insight-block" style="border-left-color:var(--blue)">2. Create <b>Telegram bot</b> via @BotFather → copy token + chat ID from @userinfobot</div>
+          <div class="insight-block" style="border-left-color:var(--purple)">3. Create <b>Razorpay payment link</b> at razorpay.com/payment-links — free account</div>
+          <div class="insight-block" style="border-left-color:var(--yellow)">4. Copy <b>.env.example</b> to <b>.env</b> and fill in your keys</div>
+          <div class="insight-block" style="border-left-color:var(--teal)">5. Run <b>python main.py</b> — the system goes live immediately</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = '';
+
+async function load(url) {
+  try { const r = await fetch(API + url); return await r.json(); } catch(e) { return null; }
+}
+
+async function loadOverview() {
+  const d = await load('/api/overview');
+  if (!d) return;
+
+  document.getElementById('ov-tenders').textContent = d.tenders?.total_tracked ?? 0;
+  document.getElementById('ov-warnings').textContent = d.market?.early_warnings?.length ?? 0;
+  document.getElementById('ov-signals').textContent = d.stocks?.signals?.length ?? 0;
+  document.getElementById('ov-mrr').textContent = '₹' + (d.revenue?.mrr ?? 0).toLocaleString('en-IN');
+  document.getElementById('nb-scout').textContent = d.tenders?.total_tracked ?? 0;
+  document.getElementById('nb-market').textContent = d.market?.early_warnings?.length ?? 0;
+  document.getElementById('nb-rev').textContent = d.revenue?.active_subscribers ?? 0;
+  if (d.pipeline?.last_run) document.getElementById('last-run').textContent = new Date(d.pipeline.last_run).toLocaleString('en-IN');
+
+  const opps = d.tenders?.top_opportunities ?? [];
+  document.getElementById('ov-opp-count').textContent = opps.length + ' today';
+  document.getElementById('ov-opps').innerHTML = opps.length ? opps.map(o => `
+    <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div class="score ${scoreClass(o.total_score)}">${(o.total_score||0).toFixed(1)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500;margin-bottom:2px">${(o.title||'').substring(0,60)}</div>
+        <div style="font-size:12px;color:var(--text2)">${o.value||'TBD'} · ${o.location||'India'}</div>
+      </div>
+    </div>`).join('') : '<div style="font-size:13px;color:var(--text2)">Run scout to see opportunities</div>';
+
+  const warns = d.market?.early_warnings ?? [];
+  document.getElementById('ov-warns').innerHTML = warns.length ? warns.slice(0,3).map(w => `
+    <div class="warn-row">
+      <span class="warn-lv ${w.confidence==='HIGH'?'warn-hi':'warn-md'}">${w.confidence||'MED'}</span>
+      <div>
+        <div class="warn-title">${(w.predicted_tender_title||'').substring(0,70)}</div>
+        <div class="warn-meta">${w.company||''} · ₹${w.estimated_value_cr||'?'} Cr · ${w.timeline_days||60} days</div>
+      </div>
+    </div>`).join('') : '<div style="font-size:13px;color:var(--text2)">Run market intel to see warnings</div>';
+
+  const insights = d.tenders?.sector_insights || '';
+  document.getElementById('ov-insights').innerHTML = insights ? insights.split('\n').filter(l=>l.trim()).slice(0,5).map(l=>`<div class="insight-block">${l}</div>`).join('') : '<div style="font-size:13px;color:var(--text2)">Run scout to generate sector insights</div>';
+}
+
+async function loadScout() {
+  const d = await load('/api/tenders?limit=20');
+  if (!d) return;
+  const tenders = d.tenders || [];
+  document.getElementById('scout-tenders').innerHTML = tenders.length ? `
+    <table class="table">
+      <tr><th>Title</th><th>Value</th><th>Sector</th><th>Deadline</th><th>Source</th></tr>
+      ${tenders.map(t => {
+        const m = t.metadata || {};
+        return `<tr>
+          <td><div style="font-weight:500">${(m.title||'N/A').substring(0,55)}</div></td>
+          <td>${m.value||'TBD'}</td>
+          <td><span class="pill pill-green">${m.sector||'N/A'}</span></td>
+          <td style="color:var(--text2)">${m.deadline||'N/A'}</td>
+          <td style="color:var(--text2)">${m.source||'N/A'}</td>
+        </tr>`;
+      }).join('')}
+    </table>` : '<div style="font-size:13px;color:var(--text2)">No tenders yet — click Run Scout above</div>';
+}
+
+async function loadMarket() {
+  const d = await load('/api/market/warnings');
+  if (!d) return;
+  const warns = d.warnings || [];
+  document.getElementById('market-warnings').innerHTML = warns.length ? warns.map(w => `
+    <div class="warn-row">
+      <span class="warn-lv ${w.confidence==='HIGH'?'warn-hi':'warn-md'}">${w.confidence||'MED'}</span>
+      <div>
+        <div class="warn-title">${(w.predicted_tender_title||'').substring(0,80)}</div>
+        <div class="warn-meta">${w.company||''} · ₹${w.estimated_value_cr||'?'} Cr · Expected in ${w.timeline_days||60} days</div>
+        <div class="warn-action">${w.action_for_small_contractor||''}</div>
+      </div>
+    </div>`).join('') : '<div style="font-size:13px;color:var(--text2)">Run market intel to see warnings</div>';
+
+  const deals = d.bulk_deals || [];
+  document.getElementById('market-bulk').innerHTML = deals.length ? `
+    <table class="table">
+      <tr><th>Company</th><th>Type</th><th>Value</th><th>Client</th><th>Signal</th></tr>
+      ${deals.map(dl => `<tr>
+        <td style="font-weight:500">${dl.company||'N/A'}</td>
+        <td><span class="pill ${dl.deal_type==='BUY'?'pill-green':'pill-red'}">${dl.deal_type||'?'}</span></td>
+        <td>₹${dl.value_cr||0} Cr</td>
+        <td style="color:var(--text2)">${(dl.client||'N/A').substring(0,30)}</td>
+        <td style="color:var(--text2);font-size:12px">${(dl.signal||'').substring(0,40)}</td>
+      </tr>`).join('')}
+    </table>` : '<div style="font-size:13px;color:var(--text2)">Run market intel to see bulk deals</div>';
+}
+
+async function loadStocks() {
+  const d = await load('/api/stocks/portfolio');
+  if (!d) return;
+  const signals = (await load('/api/overview'))?.stocks?.signals || [];
+
+  document.getElementById('stock-signals').innerHTML = signals.length ? signals.map(s => {
+    const pct = Math.min(100, Math.round(s.strength * 10));
+    const isBuy = (s.action||'').includes('BUY');
+    return `<div class="signal-row">
+      <div class="sym">${s.symbol||''}</div>
+      <div class="sig-bar"><div class="${isBuy?'sig-fill':'sig-fill-y'}" style="width:${pct}%"></div></div>
+      <div class="sig-action ${isBuy?'up':'neutral'}">${(s.action||'').substring(0,28)}</div>
+    </div>`;
+  }).join('') : '<div style="font-size:13px;color:var(--text2)">Run stocks to detect signals</div>';
+
+  const p = d.summary || {};
+  const open = d.open_trades || [];
+  document.getElementById('stock-portfolio').innerHTML = open.length ? open.map(t => `
+    <div class="sub-row">
+      <div><div style="font-size:13px;font-weight:500">${t.symbol||''}</div><div style="font-size:12px;color:var(--text2)">${t.quantity||0} shares @ ₹${t.entry_price||0}</div></div>
+      <div style="text-align:right"><div style="font-size:12px;color:var(--text2)">Target ₹${t.target_price||0}</div><span class="pill pill-yellow">Open</span></div>
+    </div>`).join('') : '<div style="font-size:13px;color:var(--text2)">No open trades yet</div>';
+
+  const closed = d.closed_trades || [];
+  const wins = closed.filter(t => t.outcome==='WIN').length;
+  const totalPnL = closed.reduce((s,t) => s+(t.pnl||0), 0);
+  document.getElementById('stock-perf').innerHTML = `
+    <div class="sub-row"><div style="font-size:13px;color:var(--text2)">Win rate</div><div style="font-size:16px;font-weight:600;color:var(--green)">${closed.length ? Math.round(wins/closed.length*100) : 0}%</div></div>
+    <div class="sub-row"><div style="font-size:13px;color:var(--text2)">Total P&L</div><div class="${totalPnL>=0?'pnl-p':'pnl-n'}">₹${totalPnL.toLocaleString('en-IN')}</div></div>
+    <div class="sub-row"><div style="font-size:13px;color:var(--text2)">Closed trades</div><div style="font-size:16px;font-weight:600">${closed.length}</div></div>
+    <div class="sub-row"><div style="font-size:13px;color:var(--text2)">Available capital</div><div style="font-size:13px;font-weight:500">₹${(p.available_capital||100000).toLocaleString('en-IN')}</div></div>
+    <div class="sub-row" style="border:none"><div style="font-size:13px;color:var(--text2)">Ready for real?</div><span class="badge ${p.is_ready_for_real_trading?'badge-green':'badge-yellow'}">${p.is_ready_for_real_trading?'Yes!':'Not yet'}</span></div>`;
+}
+
+async function loadRevenue() {
+  const d = await load('/api/revenue/metrics');
+  if (!d) return;
+  const m = d.metrics || {};
+  document.getElementById('rev-mrr').textContent = '₹' + (m.mrr||0).toLocaleString('en-IN');
+  document.getElementById('rev-subs').textContent = m.active_subscribers || 0;
+  document.getElementById('rev-leads').textContent = m.leads_contacted || 0;
+  document.getElementById('rev-conv').textContent = (m.conversion_rate||0) + '%';
+
+  const goal = 50000, curr = m.mrr||0, pct = Math.min(100, Math.round(curr/goal*100));
+  document.getElementById('rev-goal').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:8px">
+      <span>₹${curr.toLocaleString('en-IN')} / ₹${goal.toLocaleString('en-IN')}</span><span>${pct}%</span>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+    <div style="font-size:12px;color:var(--text2);margin-top:8px">Need ${Math.ceil((goal-curr)/299)} more Basic subscribers</div>`;
+
+  const subs = d.subscribers || [];
+  const tierColors = {basic:'pill-blue',pro:'pill-purple',enterprise:'pill-green',free:'pill-yellow'};
+  document.getElementById('rev-sub-list').innerHTML = subs.length ? subs.map(s => `
+    <div class="sub-row">
+      <div class="sub-name">${s.name||'Unknown'}</div>
+      <span class="pill ${tierColors[s.tier]||'pill-blue'}">${s.tier||'basic'}</span>
+      <div class="sub-price">₹${(s.price||0).toLocaleString('en-IN')}/mo</div>
+    </div>`).join('') : '<div style="font-size:13px;color:var(--text2)">No subscribers yet — run monetization to generate leads</div>';
+}
+
+async function loadSetup() {
+  const d = await load('/api/setup/status');
+  if (!d) return;
+  const checks = [
+    ['groq_api_key','Groq API key','Get free at console.groq.com'],
+    ['telegram_bot','Telegram bot token','Create via @BotFather'],
+    ['telegram_channel','Telegram channel ID','Public channel for subscribers'],
+    ['razorpay','Razorpay payment link','Free at razorpay.com'],
+    ['chroma_db','ChromaDB memory','Local vector database'],
+  ];
+  document.getElementById('setup-status').innerHTML = checks.map(([k,label,hint]) => `
+    <div class="setup-row">
+      <div><div style="font-size:13px;color:var(--text)">${label}</div><div style="font-size:12px;color:var(--text3)">${hint}</div></div>
+      <span class="badge ${d[k]?'badge-green':'badge-red'}">${d[k]?'Configured':'Not set'}</span>
+    </div>`).join('');
+}
+
+async function runPipeline(mode) {
+  const btn = document.getElementById('run-all-btn');
+  if (btn) btn.disabled = true;
+  document.getElementById('pipe-status-badge').textContent = 'Running...';
+  document.getElementById('pipe-status-badge').className = 'badge badge-yellow';
+  document.getElementById('pipe-step').textContent = `Starting ${mode} pipeline...`;
+
+  await fetch(API + `/api/pipeline/run?mode=${mode}`, {method:'POST'});
+
+  const poll = setInterval(async () => {
+    const s = await load('/api/pipeline/status');
+    if (!s) return;
+    document.getElementById('pipe-step').textContent = s.current_step || 'Running...';
+    if (!s.is_running) {
+      clearInterval(poll);
+      document.getElementById('pipe-status-badge').textContent = 'Complete';
+      document.getElementById('pipe-status-badge').className = 'badge badge-green';
+      if (btn) btn.disabled = false;
+      if (s.last_run) document.getElementById('last-run').textContent = new Date(s.last_run).toLocaleString('en-IN');
+      loadOverview();
+    }
+  }, 2000);
+}
+
+async function searchTenders() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const d = await fetch(API + '/api/tenders/search', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({query:q, limit:10})
+  }).then(r=>r.json()).catch(()=>null);
+  if (!d) return;
+  const results = d.results || [];
+  document.getElementById('scout-tenders').innerHTML = results.length ? `
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Showing ${results.length} results for "${q}"</div>
+    <table class="table">
+      <tr><th>Title</th><th>Relevance</th><th>Value</th><th>Sector</th></tr>
+      ${results.map(r => {
+        const m = r.metadata || {};
+        return `<tr>
+          <td><div style="font-weight:500">${(m.title||'N/A').substring(0,60)}</div></td>
+          <td><span class="pill pill-green">${r.relevance_score||0}%</span></td>
+          <td>${m.value||'TBD'}</td>
+          <td><span class="pill pill-blue">${m.sector||'N/A'}</span></td>
+        </tr>`;
+      }).join('')}
+    </table>` : `<div style="font-size:13px;color:var(--text2)">No results for "${q}". Run scout to populate database.</div>`;
+}
+
+function scoreClass(s) {
+  if (!s) return 'score-low';
+  return s >= 8 ? 'score-high' : s >= 6 ? 'score-med' : 'score-low';
+}
+
+const pageLoaders = {overview:loadOverview, scout:loadScout, market:loadMarket, stocks:loadStocks, revenue:loadRevenue, setup:loadSetup, run:()=>{}};
+
+function nav(page, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if (el) el.classList.add('active');
+  (pageLoaders[page] || (()=>{}))();
+}
+
+document.getElementById('search-input').addEventListener('keydown', e => { if (e.key==='Enter') searchTenders(); });
+
+loadOverview();
+setInterval(loadOverview, 60000);
+</script>
+</body>
+</html>
