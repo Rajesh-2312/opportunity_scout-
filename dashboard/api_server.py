@@ -156,9 +156,9 @@ def setup():
     from dotenv import load_dotenv; load_dotenv()
     def ok(k, bad): return bool(os.getenv(k) and os.getenv(k) != bad)
     return {
-        "groq_api_key": ok("GROQ_API_KEY","your_groq_api_key_here"),
+        "nvidia_api_key": ok("NVIDIA_API_KEY","your_nvidia_api_key_here"),
         "telegram_bot": ok("TELEGRAM_BOT_TOKEN","your_telegram_bot_token_here"),
-        "telegram_channel": ok("TELEGRAM_CHANNEL_ID","@YourChannelName"),
+        "telegram_channel": ok("TELEGRAM_CHANNEL_ID","@your_channel_here"),
         "razorpay": ok("RAZORPAY_PAYMENT_LINK","https://razorpay.me/your-link"),
         "chroma_db": os.path.exists("./data/chroma_db"),
     }

@@ -3,6 +3,12 @@
 *.env
 !.env.example
 
+# ── Node / frontend build tooling ────────────
+node_modules/
+dashboard/frontend/node_modules/
+.vite/
+*.bak
+
 # ── Python ───────────────────────────────────
 __pycache__/
 *.py[cod]
