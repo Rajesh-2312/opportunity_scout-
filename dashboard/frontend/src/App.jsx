@@ -279,8 +279,111 @@ function Revenue({ data }) {
   )
 }
 
+/* ── Invest: stocks to invest for profit ─────────────── */
+const plColor = (pl) =>
+  pl == null ? 'text-slate-400'
+  : pl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+
+const statusTone = (s) =>
+  s === 'SELL_LOSS' ? 'red' : s === 'BOOK_PROFIT' ? 'green' : 'slate'
+
+function Invest() {
+  const [positions, setPositions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try { const d = await getJSON(`${API}/api/invest/positions`); setPositions(d.positions || []) }
+    catch { setPositions([]) } finally { setLoading(false) }
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  const recommend = async () => {
+    setBusy('Analyzing NSE stocks… (sends Telegram)')
+    try { await postJSON(`${API}/api/invest/recommend`, {}) } catch {}
+    setTimeout(() => { setBusy(''); load() }, 9000)
+  }
+  const checkNow = async () => {
+    setBusy('Checking live prices…')
+    try {
+      const r = await postJSON(`${API}/api/invest/monitor`, {})
+      setBusy(`${r.sell_alerts} sell · ${r.profit_alerts} profit alerts sent`)
+    } catch { setBusy('') }
+    setTimeout(() => { setBusy(''); load() }, 1500)
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-400 max-w-xl">
+          Indian (NSE) infra/energy picks with an approximate <b className="text-slate-200">target profit %</b> and a
+          1-month-to-3-year horizon. If a pick hits its stop-loss, you get an instant <b className="text-rose-300">SELL</b> alert on Telegram.
+        </p>
+        <div className="flex gap-2">
+          <button onClick={recommend} disabled={!!busy}
+            className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50">
+            💹 Recommend stocks
+          </button>
+          <button onClick={checkNow} disabled={!!busy}
+            className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10 disabled:opacity-50">
+            🔄 Check now
+          </button>
+        </div>
+      </div>
+
+      {busy && <Pill tone="amber"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" /> {busy}</Pill>}
+
+      {loading ? <Empty>Loading positions…</Empty> : positions.length ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {positions.map((p, i) => (
+            <Card key={i} className="p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-white">{p.name}</h3>
+                  <div className="text-xs text-slate-400">{p.symbol?.replace('.NS','')} · {p.sector}</div>
+                </div>
+                <Pill tone={statusTone(p.status)}>{(p.status || 'ACTIVE').replace('_',' ')}</Pill>
+              </div>
+
+              <div className="mt-4 flex items-end justify-between">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-slate-500">Current</div>
+                  <div className="text-2xl font-bold text-white">₹{p.current_price ?? '—'}</div>
+                </div>
+                <div className={`text-right ${plColor(p.pl_pct)}`}>
+                  <div className="text-[10px] uppercase tracking-wide text-slate-500">P/L</div>
+                  <div className="text-xl font-bold">{p.pl_pct == null ? '—' : `${p.pl_pct > 0 ? '+' : ''}${p.pl_pct}%`}</div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
+                <Field label="Buy ~" value={`₹${p.entry_price}`} />
+                <Field label="Horizon" value={p.horizon} />
+                <Field label="Target" value={`+${p.target_profit_pct}% (₹${p.target_price})`} />
+                <Field label="Stop-loss" value={`${p.stop_loss_pct}% (₹${p.stop_loss_price})`} />
+              </div>
+
+              {/* progress toward target / stop */}
+              <div className="mt-4 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                <div className={`h-full ${p.pl_pct >= 0 ? 'bg-emerald-400' : 'bg-rose-400'}`}
+                     style={{ width: `${Math.min(100, Math.abs((p.pl_pct || 0) /
+                       ((p.pl_pct || 0) >= 0 ? (p.target_profit_pct || 1) : (p.stop_loss_pct || -1)) * 100))}%` }} />
+              </div>
+
+              {p.rationale && <p className="mt-3 text-xs text-slate-400">📈 {p.rationale}</p>}
+            </Card>
+          ))}
+        </div>
+      ) : <Empty>No recommendations yet — click <b className="text-slate-300">Recommend stocks</b>.</Empty>}
+
+      <p className="text-[11px] text-slate-500">⚠️ Auto-generated signals, not financial advice. Do your own research.</p>
+    </div>
+  )
+}
+
 /* ── Main App ────────────────────────────────────────── */
-const TABS = ['Overview', 'Tenders', 'Market', 'Stocks', 'Revenue']
+const TABS = ['Overview', 'Invest', 'Tenders', 'Market', 'Stocks', 'Revenue']
 
 export default function App() {
   const [data, setData] = useState(null)
@@ -379,6 +482,7 @@ export default function App() {
 
         <main className="mt-6 pb-12">
           {tab === 'Overview' && <Overview data={data} />}
+          {tab === 'Invest' && <Invest />}
           {tab === 'Tenders' && <Tenders />}
           {tab === 'Market' && <Market data={data} />}
           {tab === 'Stocks' && <Stocks data={data} />}

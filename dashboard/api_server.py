@@ -125,6 +125,44 @@ def close(req: TradeClose):
     if r: return {"status": "closed", "trade": r}
     raise HTTPException(404, "Trade not found")
 
+# ── Invest (stocks to invest for profit) ──────────────────
+@app.get("/api/invest/positions")
+def invest_positions():
+    """Live status of recommended stocks with current P/L (no Telegram)."""
+    from stock_intelligence.investment_advisor import InvestmentAdvisor
+    adv = InvestmentAdvisor()
+    return {"positions": adv.live_status()}
+
+@app.post("/api/invest/recommend")
+def invest_recommend(bg: BackgroundTasks):
+    """Generate fresh recommendations + send Telegram digest (runs in background)."""
+    if pipeline_status["is_running"]:
+        return {"status": "busy"}
+    bg.add_task(_bg_invest_recommend)
+    return {"status": "started"}
+
+@app.post("/api/invest/monitor")
+def invest_monitor():
+    """Check positions now; send SELL/PROFIT Telegram alerts on threshold cross."""
+    from stock_intelligence.investment_advisor import InvestmentAdvisor
+    adv = InvestmentAdvisor()
+    r = adv.monitor_and_alert()
+    return {"sell_alerts": len(r["sell_alerts"]), "profit_alerts": len(r["profit_alerts"]),
+            "checked": r["checked"]}
+
+def _bg_invest_recommend():
+    global pipeline_status
+    pipeline_status["is_running"] = True
+    pipeline_status["current_step"] = "Analyzing stocks to invest..."
+    try:
+        from stock_intelligence.investment_advisor import run_investment_recommendations
+        run_investment_recommendations(top_n=6)
+    except Exception as e:
+        pipeline_status["current_step"] = f"Error: {e}"
+    finally:
+        pipeline_status["is_running"] = False
+        pipeline_status["current_step"] = "Idle"
+
 # ── Revenue ────────────────────────────────────────────────
 @app.get("/api/revenue/metrics")
 def revenue():

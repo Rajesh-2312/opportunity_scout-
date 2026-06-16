@@ -61,6 +61,7 @@ from market_intelligence.correlation_engine import run_correlation_analysis
 from stock_intelligence.signal_detector import SignalDetector
 from stock_intelligence.paper_trader import run_paper_trading, TradingSignalExecutor
 from stock_intelligence.stock_dashboard import StockDashboard, run_stock_dashboard
+from stock_intelligence.investment_advisor import run_investment_recommendations, run_investment_monitor
 
 console = Console()
 
@@ -476,6 +477,8 @@ Examples:
     parser.add_argument("--market",    action="store_true", help="Phase 3: Market intelligence agent")
     parser.add_argument("--stocks",    action="store_true", help="Phase 4: Stock signals + paper trades")
     parser.add_argument("--portfolio", action="store_true", help="Show paper trading portfolio")
+    parser.add_argument("--invest",    action="store_true", help="Suggest Indian stocks to invest for profit (+Telegram)")
+    parser.add_argument("--monitor",   action="store_true", help="Monitor invested stocks; alert to SELL on loss / book profit")
     parser.add_argument("--full",      action="store_true", help="Run ALL phases in sequence")
 
     args   = parser.parse_args()
@@ -518,6 +521,12 @@ Examples:
 
     elif args.stocks:
         run_stock_intelligence_pipeline()
+
+    elif args.invest:
+        run_investment_recommendations(top_n=6)
+
+    elif args.monitor:
+        run_investment_monitor()
 
     elif args.full:
         run_full_pipeline(config)
