@@ -20,9 +20,6 @@ from typing import TypedDict, List, Dict
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import StateGraph, END
 from rich.console import Console
 
 load_dotenv()
@@ -143,35 +140,30 @@ def predict_tenders_node(state: MarketAgentState) -> MarketAgentState:
     """Node: AI predicts specific upcoming tenders based on patterns"""
     console.print("[bold cyan]🔮 Agent: Predicting upcoming tenders...[/bold cyan]")
 
-    llm = _get_llm()
+    client = _get_client()
     predictions = []
+
+    system = """You are an infrastructure investment analyst in India.
+Given a company announcement, predict specific upcoming government/private tenders.
+Focus on: what sub-tenders will be floated, estimated value, timeline, who can bid.
+Return ONLY valid JSON with keys:
+predicted_tender_title, estimated_value_cr, timeline_days,
+eligible_bidders, action_for_small_contractor, opportunity_score (1-10)"""
 
     for match in state["pattern_matches"][:8]:  # Process top 8
         announcement = match["announcement"]
         playbook = match.get("playbook", {})
 
-        if llm:
+        if client:
             try:
-                messages = [
-                    SystemMessage(content="""You are an infrastructure investment analyst in India.
-                    Given a company announcement, predict specific upcoming government/private tenders.
-                    Focus on: what sub-tenders will be floated, estimated value, timeline, who can bid.
-                    Return ONLY valid JSON with keys:
-                    predicted_tender_title, estimated_value_cr, timeline_days,
-                    eligible_bidders, action_for_small_contractor, opportunity_score (1-10)
-                    """),
-                    HumanMessage(content=f"""
-                    Company: {announcement.get('company')}
-                    Announcement: {announcement.get('headline')}
-                    Signal Type: {announcement.get('signal_type')}
-                    Company Pattern: {playbook.get('pattern', 'Infrastructure company activity')}
-                    Expected tender types: {playbook.get('sub_tender_types', [])}
+                user = f"""Company: {announcement.get('company')}
+Announcement: {announcement.get('headline')}
+Signal Type: {announcement.get('signal_type')}
+Company Pattern: {playbook.get('pattern', 'Infrastructure company activity')}
+Expected tender types: {playbook.get('sub_tender_types', [])}
 
-                    Predict the specific tender that will follow this announcement.
-                    """)
-                ]
-                response = llm.invoke(messages)
-                text = response.content.strip()
+Predict the specific tender that will follow this announcement."""
+                text = _chat(client, system, user)
                 if "```json" in text:
                     text = text.split("```json")[1].split("```")[0].strip()
                 elif "```" in text:
@@ -326,19 +318,29 @@ def generate_market_report_node(state: MarketAgentState) -> MarketAgentState:
 # Helpers
 # ─────────────────────────────────────────────
 
-def _get_llm():
+def _get_client():
+    """OpenAI-compatible client for NVIDIA NIM, or None for mock mode."""
     api_key = os.getenv("NVIDIA_API_KEY")
     if not api_key or api_key == "your_nvidia_api_key_here":
         return None
-    return ChatOpenAI(
+    from openai import OpenAI
+    return OpenAI(
         api_key=api_key,
         base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
-        model=os.getenv("NVIDIA_MODEL", "meta/llama-3.1-70b-instruct"),
+        timeout=45,
+        max_retries=1,
+    )
+
+
+def _chat(client, system: str, user: str) -> str:
+    resp = client.chat.completions.create(
+        model=os.getenv("NVIDIA_MODEL", "meta/llama-3.1-8b-instruct"),
+        messages=[{"role": "system", "content": system},
+                  {"role": "user", "content": user}],
         temperature=0.2,
         max_tokens=1500,
-        timeout=45,
-        max_retries=1
     )
+    return (resp.choices[0].message.content or "").strip()
 
 
 def _calculate_signal_strength(announcement: Dict, bulk_deals: List[Dict], company: str) -> str:
@@ -407,40 +409,27 @@ def _mock_prediction(announcement: Dict, playbook: Dict) -> Dict:
 # Build Agent
 # ─────────────────────────────────────────────
 
-def build_market_agent():
-    workflow = StateGraph(MarketAgentState)
-    workflow.add_node("pattern_matching", pattern_matching_node)
-    workflow.add_node("predict_tenders", predict_tenders_node)
-    workflow.add_node("early_warnings", generate_early_warnings_node)
-    workflow.add_node("generate_report", generate_market_report_node)
-
-    workflow.set_entry_point("pattern_matching")
-    workflow.add_edge("pattern_matching", "predict_tenders")
-    workflow.add_edge("predict_tenders", "early_warnings")
-    workflow.add_edge("early_warnings", "generate_report")
-    workflow.add_edge("generate_report", END)
-
-    return workflow.compile()
-
-
 def run_market_agent(bse_data: Dict, existing_tenders: List[Dict] = None) -> Dict:
-    """Run the market intelligence agent"""
+    """Run the market intelligence agent (sequential pipeline, no LangGraph)"""
     console.print("\n[bold magenta]🧠 Starting Market Intelligence Agent...[/bold magenta]\n")
 
-    agent = build_market_agent()
-    initial_state = MarketAgentState(
-        announcements=bse_data.get("announcements", []),
-        bulk_deals=bse_data.get("bulk_deals", []),
-        price_signals=bse_data.get("price_signals", []),
-        existing_tenders=existing_tenders or [],
-        pattern_matches=[],
-        predictions=[],
-        early_warnings=[],
-        market_report="",
-        error=""
-    )
+    state: MarketAgentState = {
+        "announcements": bse_data.get("announcements", []),
+        "bulk_deals": bse_data.get("bulk_deals", []),
+        "price_signals": bse_data.get("price_signals", []),
+        "existing_tenders": existing_tenders or [],
+        "pattern_matches": [],
+        "predictions": [],
+        "early_warnings": [],
+        "market_report": "",
+        "error": "",
+    }
 
-    return agent.invoke(initial_state)
+    state = pattern_matching_node(state)
+    state = predict_tenders_node(state)
+    state = generate_early_warnings_node(state)
+    state = generate_market_report_node(state)
+    return state
 
 
 if __name__ == "__main__":

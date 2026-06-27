@@ -1,18 +1,15 @@
 """
 agents/scout_agent.py
-LangGraph-powered AI agent that analyzes, scores, and ranks opportunities
-Uses FREE Groq LLM (llama-3.1-70b) for intelligence
+AI agent that analyzes, scores, and ranks opportunities.
+Uses NVIDIA NIM (OpenAI-compatible API) via the lightweight `openai` SDK.
+No LangChain / LangGraph — just direct calls + a simple sequential pipeline.
 """
 
 import os
 import json
-from typing import TypedDict, List, Dict, Annotated
+from typing import TypedDict, List, Dict
 from datetime import datetime
 from dotenv import load_dotenv
-
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import StateGraph, END
 from rich.console import Console
 
 load_dotenv()
@@ -33,67 +30,72 @@ class AgentState(TypedDict):
 
 
 # ─────────────────────────────────────────────
-# Initialize LLM (FREE via Groq)
+# NVIDIA NIM client (OpenAI-compatible)
 # ─────────────────────────────────────────────
-def get_llm():
+def get_client():
+    """Return an OpenAI-compatible client pointed at NVIDIA NIM, or None for mock mode."""
     api_key = os.getenv("NVIDIA_API_KEY")
     if not api_key or api_key == "your_nvidia_api_key_here":
         console.print("[yellow]⚠️ No NVIDIA API key found. Using mock analysis.[/yellow]")
         return None
-
-    return ChatOpenAI(
+    from openai import OpenAI
+    return OpenAI(
         api_key=api_key,
         base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
-        model=os.getenv("NVIDIA_MODEL", "meta/llama-3.1-70b-instruct"),
-        temperature=0.3,
-        max_tokens=2000,
         timeout=45,
-        max_retries=1
+        max_retries=1,
     )
 
 
-# ─────────────────────────────────────────────
-# Agent Nodes
-# ─────────────────────────────────────────────
+def chat(client, system: str, user: str, temperature: float = 0.3, max_tokens: int = 2000) -> str:
+    """Single chat completion against NVIDIA NIM. Returns the text content."""
+    resp = client.chat.completions.create(
+        model=os.getenv("NVIDIA_MODEL", "meta/llama-3.1-8b-instruct"),
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    return (resp.choices[0].message.content or "").strip()
 
+
+# ─────────────────────────────────────────────
+# Pipeline steps
+# ─────────────────────────────────────────────
 def analyze_tenders_node(state: AgentState) -> AgentState:
-    """Node: AI analyzes each tender and scores it"""
+    """AI analyzes each tender and scores it"""
     console.print("[bold cyan]🤖 Agent: Analyzing tenders...[/bold cyan]")
 
-    llm = get_llm()
+    client = get_client()
     analyzed = []
-
     tenders = state["raw_tenders"][:15]  # Process top 15 to save tokens
 
-    for tender in tenders:
-        if llm:
-            try:
-                messages = [
-                    SystemMessage(content="""You are an infrastructure investment analyst in India.
-                    Analyze government tenders and score them on:
-                    1. Strategic importance (1-10)
-                    2. Revenue potential (1-10)  
-                    3. Competition level - lower is better (1-10)
-                    4. Urgency (days to deadline)
-                    
-                    Return ONLY valid JSON with keys: 
-                    strategic_score, revenue_score, competition_score, urgency_days, 
-                    opportunity_type, key_insight, action_required, total_score
-                    """),
-                    HumanMessage(content=f"""
-                    Analyze this tender:
-                    Title: {tender.get('title', '')}
-                    Department: {tender.get('department', '')}
-                    Value: {tender.get('value', '')}
-                    Sector: {tender.get('sector', '')}
-                    Location: {tender.get('location', '')}
-                    Description: {tender.get('description', '')}
-                    Deadline: {tender.get('deadline', '')}
-                    """)
-                ]
+    system = """You are an infrastructure investment analyst in India.
+Analyze government tenders and score them on:
+1. Strategic importance (1-10)
+2. Revenue potential (1-10)
+3. Competition level - lower is better (1-10)
+4. Urgency (days to deadline)
 
-                response = llm.invoke(messages)
-                text = response.content.strip()
+Return ONLY valid JSON with keys:
+strategic_score, revenue_score, competition_score, urgency_days,
+opportunity_type, key_insight, action_required, total_score"""
+
+    for tender in tenders:
+        if client:
+            try:
+                user = f"""Analyze this tender:
+Title: {tender.get('title', '')}
+Department: {tender.get('department', '')}
+Value: {tender.get('value', '')}
+Sector: {tender.get('sector', '')}
+Location: {tender.get('location', '')}
+Description: {tender.get('description', '')}
+Deadline: {tender.get('deadline', '')}"""
+
+                text = chat(client, system, user, temperature=0.3, max_tokens=2000)
 
                 # Clean JSON response
                 if "```json" in text:
@@ -121,31 +123,23 @@ def analyze_tenders_node(state: AgentState) -> AgentState:
 
 
 def rank_and_filter_node(state: AgentState) -> AgentState:
-    """Node: Rank opportunities by score and filter top ones"""
+    """Rank opportunities by score and filter top ones"""
     console.print("[bold cyan]🏆 Agent: Ranking opportunities...[/bold cyan]")
-
-    opportunities = state["analyzed_opportunities"]
-
-    # Sort by total score
     sorted_opps = sorted(
-        opportunities,
+        state["analyzed_opportunities"],
         key=lambda x: x.get("total_score", 0),
         reverse=True
     )
-
-    # Top 5 high-priority opportunities
-    top_5 = sorted_opps[:5]
-    state["top_opportunities"] = top_5
-
-    console.print(f"[green]✅ Top {len(top_5)} opportunities identified[/green]")
+    state["top_opportunities"] = sorted_opps[:5]
+    console.print(f"[green]✅ Top {len(state['top_opportunities'])} opportunities identified[/green]")
     return state
 
 
 def generate_sector_insights_node(state: AgentState) -> AgentState:
-    """Node: Generate macro sector intelligence from news"""
+    """Generate macro sector intelligence from news"""
     console.print("[bold cyan]📊 Agent: Generating sector insights...[/bold cyan]")
 
-    llm = get_llm()
+    client = get_client()
     news_items = state["raw_news"][:8]
 
     if not news_items:
@@ -157,18 +151,18 @@ def generate_sector_insights_node(state: AgentState) -> AgentState:
         for n in news_items
     ])
 
-    if llm:
+    if client:
         try:
-            messages = [
-                SystemMessage(content="""You are a strategic infrastructure analyst for India.
-                Analyze news to identify emerging opportunities BEFORE they become tenders.
-                Focus on: policy signals, budget allocations, upcoming projects, sector momentum.
-                Be specific, actionable, and concise. Max 300 words."""),
-                HumanMessage(content=f"Analyze these infrastructure news items:\n{news_text}")
-            ]
-            response = llm.invoke(messages)
-            state["sector_insights"] = response.content
-        except Exception as e:
+            system = """You are a strategic infrastructure analyst for India.
+Analyze news to identify emerging opportunities BEFORE they become tenders.
+Focus on: policy signals, budget allocations, upcoming projects, sector momentum.
+Be specific, actionable, and concise. Max 300 words."""
+            state["sector_insights"] = chat(
+                client, system,
+                f"Analyze these infrastructure news items:\n{news_text}",
+                temperature=0.3, max_tokens=2000
+            )
+        except Exception:
             state["sector_insights"] = _mock_sector_insights(news_items)
     else:
         state["sector_insights"] = _mock_sector_insights(news_items)
@@ -177,14 +171,13 @@ def generate_sector_insights_node(state: AgentState) -> AgentState:
 
 
 def generate_daily_report_node(state: AgentState) -> AgentState:
-    """Node: Compile everything into a final actionable daily report"""
+    """Compile everything into a final actionable daily report"""
     console.print("[bold cyan]📝 Agent: Generating daily report...[/bold cyan]")
 
     top_opps = state["top_opportunities"]
     sector_insights = state["sector_insights"]
     today = datetime.now().strftime("%d %B %Y")
 
-    # Build report
     report_lines = [
         f"🎯 OPPORTUNITY SCOUT DAILY REPORT",
         f"📅 {today}",
@@ -228,7 +221,6 @@ def generate_daily_report_node(state: AgentState) -> AgentState:
 # ─────────────────────────────────────────────
 # Mock Analysis (when no API key)
 # ─────────────────────────────────────────────
-
 def _mock_analysis(tender: Dict) -> Dict:
     """Mock AI analysis for testing"""
     import random
@@ -283,78 +275,51 @@ def _mock_sector_insights(news_items: List[Dict]) -> str:
 
 
 # ─────────────────────────────────────────────
-# Build LangGraph Agent
+# Run the agent pipeline (sequential, no LangGraph)
 # ─────────────────────────────────────────────
-
-def build_scout_agent():
-    """Build the LangGraph agent pipeline"""
-    workflow = StateGraph(AgentState)
-
-    # Add nodes
-    workflow.add_node("analyze_tenders", analyze_tenders_node)
-    workflow.add_node("rank_filter", rank_and_filter_node)
-    workflow.add_node("sector_insights", generate_sector_insights_node)
-    workflow.add_node("generate_report", generate_daily_report_node)
-
-    # Define flow
-    workflow.set_entry_point("analyze_tenders")
-    workflow.add_edge("analyze_tenders", "rank_filter")
-    workflow.add_edge("rank_filter", "sector_insights")
-    workflow.add_edge("sector_insights", "generate_report")
-    workflow.add_edge("generate_report", END)
-
-    return workflow.compile()
-
-
 def run_scout_agent(scraped_data: Dict) -> Dict:
     """Run the full agent pipeline on scraped data"""
     console.print("\n[bold magenta]🚀 Starting Opportunity Scout Agent...[/bold magenta]\n")
 
-    agent = build_scout_agent()
-
-    # Combine tenders and bids
     all_tenders = scraped_data.get("tenders", []) + scraped_data.get("gem_bids", [])
 
-    initial_state = AgentState(
-        raw_tenders=all_tenders,
-        raw_news=scraped_data.get("news", []),
-        analyzed_opportunities=[],
-        top_opportunities=[],
-        daily_report="",
-        sector_insights="",
-        error=""
-    )
+    state: AgentState = {
+        "raw_tenders": all_tenders,
+        "raw_news": scraped_data.get("news", []),
+        "analyzed_opportunities": [],
+        "top_opportunities": [],
+        "daily_report": "",
+        "sector_insights": "",
+        "error": "",
+    }
 
-    final_state = agent.invoke(initial_state)
-    return final_state
+    state = analyze_tenders_node(state)
+    state = rank_and_filter_node(state)
+    state = generate_sector_insights_node(state)
+    state = generate_daily_report_node(state)
+    return state
 
 
 if __name__ == "__main__":
-    # Test with mock data
     mock_data = {
-        "tenders": [
-            {
-                "id": "TEST-001",
-                "title": "500MW Solar Power Plant in Telangana",
-                "department": "TSGENCO",
-                "value": "₹2500 Crore",
-                "sector": "renewable energy",
-                "location": "Telangana",
-                "description": "Large scale solar generation",
-                "deadline": "2024-12-31",
-                "source": "CPPP",
-                "url": "https://eprocure.gov.in"
-            }
-        ],
+        "tenders": [{
+            "id": "TEST-001",
+            "title": "500MW Solar Power Plant in Telangana",
+            "department": "TSGENCO",
+            "value": "₹2500 Crore",
+            "sector": "renewable energy",
+            "location": "Telangana",
+            "description": "Large scale solar generation",
+            "deadline": "2024-12-31",
+            "source": "CPPP",
+            "url": "https://eprocure.gov.in"
+        }],
         "gem_bids": [],
-        "news": [
-            {
-                "title": "India targets 500GW renewable energy by 2030",
-                "description": "Government accelerates solar and wind deployment",
-                "source": "Economic Times"
-            }
-        ]
+        "news": [{
+            "title": "India targets 500GW renewable energy by 2030",
+            "description": "Government accelerates solar and wind deployment",
+            "source": "Economic Times"
+        }]
     }
-
     result = run_scout_agent(mock_data)
     print("\n" + result["daily_report"])
