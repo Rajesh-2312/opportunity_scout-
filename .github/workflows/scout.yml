@@ -1,0 +1,59 @@
+name: Opportunity Scout — 24/7 Runner
+
+on:
+  schedule:
+    # Runs every 6 hours: 12am, 6am, 12pm, 6pm IST (UTC+5:30 offset)
+    - cron: '30 0,6,12,18 * * *'
+  workflow_dispatch:   # lets you click "Run" manually from GitHub UI
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create data directories
+        run: mkdir -p data reports leads
+
+      - name: Write .env from GitHub Secrets
+        run: |
+          cat > .env << EOF
+          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+          TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHANNEL_ID=${{ secrets.TELEGRAM_CHANNEL_ID }}
+          RAZORPAY_PAYMENT_LINK=${{ secrets.RAZORPAY_PAYMENT_LINK }}
+          TARGET_SECTORS=infrastructure,energy,ports,logistics,airports,green hydrogen
+          TARGET_STATES=Andhra Pradesh,Telangana,Karnataka,Tamil Nadu
+          MIN_TENDER_VALUE_LAKHS=10
+          AUTHOR_NAME=Rajesh M.
+          NEWSLETTER_NAME=India Infra Intelligence
+          EOF
+
+      - name: Run Opportunity Scout
+        run: python main.py --full
+        env:
+          PYTHONUNBUFFERED: "1"
+          PYTHONUTF8: "1"
+
+      - name: Upload reports as artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scout-reports-${{ github.run_number }}
+          path: |
+            reports/
+            data/pipeline_results_*.json
+          retention-days: 7

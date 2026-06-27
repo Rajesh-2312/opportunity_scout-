@@ -1,0 +1,17 @@
+[Unit]
+Description=Opportunity Scout — Web Dashboard (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/opportunity-scout
+ExecStart=/home/ubuntu/opportunity-scout/venv/bin/python dashboard/run_dashboard.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

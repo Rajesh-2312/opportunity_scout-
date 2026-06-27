@@ -1,3 +1,4 @@
+
 """
 main.py
 Opportunity Scout Agent - Master Orchestrator
@@ -479,6 +480,7 @@ Examples:
     parser.add_argument("--portfolio", action="store_true", help="Show paper trading portfolio")
     parser.add_argument("--invest",    action="store_true", help="Suggest Indian stocks to invest for profit (+Telegram)")
     parser.add_argument("--monitor",   action="store_true", help="Monitor invested stocks; alert to SELL on loss / book profit")
+    parser.add_argument("--listen",    action="store_true", help="Run interactive Telegram command bot (/latest, /invest, etc.)")
     parser.add_argument("--full",      action="store_true", help="Run ALL phases in sequence")
 
     args   = parser.parse_args()
@@ -527,6 +529,10 @@ Examples:
 
     elif args.monitor:
         run_investment_monitor()
+
+    elif args.listen:
+        from notifier.telegram_listener import run_listener
+        run_listener()
 
     elif args.full:
         run_full_pipeline(config)

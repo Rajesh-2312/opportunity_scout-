@@ -98,33 +98,41 @@ class TelegramNotifier:
             "disable_web_page_preview": True
         }
 
-        ips = await _telegram_ips()
-        for attempt in range(1, retries + 1):
-            ip = ips[(attempt - 1) % len(ips)]  # rotate IP each retry
+        proxy = os.getenv("TELEGRAM_PROXY", "").strip() or None
+        # Connection strategies, tried in order:
+        #   "normal"  -> standard DNS/connection (works on VPN/WARP or unblocked nets)
+        #   <ip>      -> pin Telegram's real IP (bypasses ISP DNS-hijack when no VPN)
+        strategies = ["normal"] + ([] if proxy else await _telegram_ips())
+        attempts = max(retries, len(strategies))
+
+        for attempt in range(attempts):
+            strat = strategies[attempt % len(strategies)]
             try:
-                timeout = aiohttp.ClientTimeout(total=30)
-                connector = aiohttp.TCPConnector(
-                    resolver=_PinnedResolver(_TELEGRAM_HOST, ip),
-                    family=socket.AF_INET,  # avoid hijacked IPv6
-                )
+                timeout = aiohttp.ClientTimeout(total=20)
+                if proxy or strat == "normal":
+                    connector = aiohttp.TCPConnector()
+                else:
+                    connector = aiohttp.TCPConnector(
+                        resolver=_PinnedResolver(_TELEGRAM_HOST, strat),
+                        family=socket.AF_INET,  # avoid hijacked IPv6
+                    )
                 async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
-                    async with session.post(url, json=payload) as response:
+                    async with session.post(url, json=payload, proxy=proxy) as response:
                         if response.status == 200:
                             console.print("[green]✅ Telegram message sent![/green]")
                             return True
-                        else:
+                        elif 400 <= response.status < 500:
                             error = await response.text()
-                            # 4xx (bad token/chat) won't fix on retry — bail out
-                            if 400 <= response.status < 500:
-                                console.print(f"[red]❌ Telegram error {response.status}: {error}[/red]")
-                                return False
-                            console.print(f"[yellow]⚠️ Telegram {response.status} (attempt {attempt}/{retries})[/yellow]")
+                            console.print(f"[red]❌ Telegram error {response.status}: {error}[/red]")
+                            return False
+                        else:
+                            console.print(f"[yellow]⚠️ Telegram {response.status} (attempt {attempt+1}/{attempts})[/yellow]")
 
             except Exception as e:
-                console.print(f"[yellow]⚠️ Telegram connect failed (attempt {attempt}/{retries}): {e}[/yellow]")
+                console.print(f"[yellow]⚠️ Telegram connect failed (attempt {attempt+1}/{attempts}, {strat}): {e}[/yellow]")
 
-            if attempt < retries:
-                await asyncio.sleep(2 * attempt)  # backoff: 2s, 4s
+            if attempt < attempts - 1:
+                await asyncio.sleep(1.5)
 
         console.print("[red]❌ Telegram send failed after retries[/red]")
         return False

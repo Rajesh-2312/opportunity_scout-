@@ -1,0 +1,24 @@
+[Unit]
+Description=Opportunity Scout — Tender Intelligence Scheduler
+Documentation=https://github.com/your-repo
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Change 'ubuntu' to your server username if different
+User=ubuntu
+WorkingDirectory=/home/ubuntu/opportunity-scout
+ExecStart=/home/ubuntu/opportunity-scout/venv/bin/python main.py --schedule
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONUTF8=1
+# Restart after 5 failures with a longer delay
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target
