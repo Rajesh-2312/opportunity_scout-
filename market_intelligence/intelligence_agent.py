@@ -170,6 +170,10 @@ Predict the specific tender that will follow this announcement."""
                     text = text.split("```")[1].split("```")[0].strip()
 
                 prediction = json.loads(text)
+                # NVIDIA returns numbers as strings — coerce so later math works
+                prediction["timeline_days"] = int(_to_num(prediction.get("timeline_days"), 60))
+                prediction["opportunity_score"] = _to_num(prediction.get("opportunity_score"), 7)
+                prediction["estimated_value_cr"] = _to_num(prediction.get("estimated_value_cr"), 0)
                 prediction["source_announcement"] = announcement.get("headline", "")
                 prediction["company"] = announcement.get("company", "")
                 prediction["confidence"] = match["confidence"]
@@ -196,15 +200,14 @@ def generate_early_warnings_node(state: MarketAgentState) -> MarketAgentState:
 
     # High scoring predictions
     for pred in state["predictions"]:
-        score = pred.get("opportunity_score", 0)
+        score = _to_num(pred.get("opportunity_score", 0), 0)
         confidence = pred.get("confidence", "MEDIUM")
         if score >= 7 or confidence == "HIGH":
+            days = int(_to_num(pred.get("timeline_days", 60), 60))
             early_warnings.append({
                 **pred,
                 "warning_level": "🔴 CRITICAL" if score >= 9 else "🟡 HIGH",
-                "act_by": (datetime.now() + timedelta(
-                    days=pred.get("timeline_days", 60) - 14
-                )).strftime("%d-%m-%Y")
+                "act_by": (datetime.now() + timedelta(days=days - 14)).strftime("%d-%m-%Y")
             })
 
     # Unusual bulk deals as warnings
@@ -341,6 +344,18 @@ def _chat(client, system: str, user: str) -> str:
         max_tokens=1500,
     )
     return (resp.choices[0].message.content or "").strip()
+
+
+def _to_num(val, default=0):
+    """Coerce LLM JSON values (often strings like '60' or '₹500 Cr') to a number."""
+    if isinstance(val, (int, float)):
+        return val
+    try:
+        import re
+        m = re.search(r"-?\d+\.?\d*", str(val))
+        return float(m.group()) if m else default
+    except Exception:
+        return default
 
 
 def _calculate_signal_strength(announcement: Dict, bulk_deals: List[Dict], company: str) -> str:
