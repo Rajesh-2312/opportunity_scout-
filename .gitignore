@@ -20,6 +20,8 @@ env/
 # ── Runtime data / outputs (not source) ──────
 data/
 reports/
+newsletter/
+leads/
 *.log
 scout.log
 run.log
