@@ -1,5 +1,5 @@
 # Opportunity Scout — Outreach Kit
-### Copy-paste messages. Replace [YOUR_CHANNEL_LINK] and [YOUR_RAZORPAY_LINK].
+### Copy-paste messages. Replace https://t.me/opportunity_scout and https://razorpay.me/@marojurajesh.
 
 ---
 
@@ -32,7 +32,7 @@ Today's top opportunity 👇
 ✅ JV/consortium permitted — lower barrier to win
 
 To see the full analysis + 4 more opportunities like this:
-💼 Subscribe → [YOUR_RAZORPAY_LINK]
+💼 Subscribe → https://razorpay.me/@marojurajesh
 ━━━━━━━━━━━━━━━━━━━━━━
 
 Follow this channel for your free daily alert 👆
@@ -57,8 +57,8 @@ This week alone it found:
 
 Most contractors miss these because they don't check all portals daily.
 
-Free daily alert: [YOUR_CHANNEL_LINK]
-Premium (₹299/month) for full analysis + 5 tenders/day: [YOUR_RAZORPAY_LINK]
+Free daily alert: https://t.me/opportunity_scout
+Premium (₹299/month) for full analysis + 5 tenders/day: https://razorpay.me/@marojurajesh
 
 Happy to send you this week's full report free — just say the word.
 ```
@@ -95,7 +95,7 @@ This week's top picks:
 
 If you're a civil contractor, EPC company, solar installer, or logistics firm — you should see this.
 
-Free daily alert 👉 [YOUR_CHANNEL_LINK]
+Free daily alert 👉 https://t.me/opportunity_scout
 
 Drop a "interested" in comments and I'll send you this week's full report.
 
@@ -133,7 +133,7 @@ I run a Telegram channel that sends these every morning with full AI analysis �
 
 Cost: ₹299/month. Less than missing one tender.
 
-Channel (free preview): [YOUR_CHANNEL_LINK]
+Channel (free preview): https://t.me/opportunity_scout
 
 Tag a contractor who needs to see this 👇
 
@@ -167,7 +167,7 @@ I send a daily digest of the top 5 opportunities with this analysis already done
 
 ₹299/month. Cancel anytime.
 
-Running a free preview this week: [YOUR_CHANNEL_LINK]
+Running a free preview this week: https://t.me/opportunity_scout
 
 Which sector are you in? Drop it below — I'll tell you what's coming up.
 ```
@@ -187,8 +187,8 @@ This week's highlights:
 ✅ ₹45 Crore EPC infrastructure — Central Govt (Sep 19)
 ✅ ₹45 Crore development project — AP (Aug 31)
 
-Free daily alert channel: [YOUR_CHANNEL_LINK]
-Full analysis subscription: ₹299/month → [YOUR_RAZORPAY_LINK]
+Free daily alert channel: https://t.me/opportunity_scout
+Full analysis subscription: ₹299/month → https://razorpay.me/@marojurajesh
 
 Drop me a message if you want this week's complete report.
 No strings. Just sharing what the AI found.
@@ -247,7 +247,7 @@ Best regards,
 Rajesh M.
 India Infra Intelligence
 📱 [Your Phone]
-🔗 [YOUR_CHANNEL_LINK]
+🔗 https://t.me/opportunity_scout
 ```
 
 ---

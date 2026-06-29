@@ -28,7 +28,7 @@ class NewsletterFormatter:
         self.newsletter_name = os.getenv("NEWSLETTER_NAME", "India Infra Intelligence")
         self.substack_url = os.getenv("SUBSTACK_URL", "https://indiainfra.substack.com")
         self.linkedin_url = os.getenv("LINKEDIN_URL", "https://linkedin.com/in/rajesh-maroju-754a65332")
-        self.razorpay_link = os.getenv("RAZORPAY_PAYMENT_LINK", "https://razorpay.me/your-link")
+        self.razorpay_link = os.getenv("RAZORPAY_PAYMENT_LINK", "https://https://razorpay.me/@marojurajesh")
 
     def format_substack_html(self, top_opportunities: List[Dict],
                               sector_insights: str,
@@ -219,7 +219,7 @@ Follow me for weekly infrastructure intelligence.
             f"━━━━━━━━━━━━━\n"
             f"💎 *Full analysis + 2 more tenders*\n"
             f"Subscribe: ₹299/month\n"
-            f"{os.getenv('RAZORPAY_PAYMENT_LINK', 'razorpay.me/your-link')}"
+            f"{os.getenv('RAZORPAY_PAYMENT_LINK', 'https://razorpay.me/@marojurajesh')}"
         )
 
         return "\n".join(lines)

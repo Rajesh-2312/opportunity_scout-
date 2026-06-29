@@ -56,6 +56,7 @@ from monetization.channel_publisher import ChannelPublisher
 from monetization.lead_generator import run_lead_generation
 from monetization.newsletter_formatter import NewsletterFormatter
 from monetization.payment_tracker import RevenueDashboard, SubscriberTracker
+from monetization.customer_pipeline import run_renewal_check, post_revenue_summary
 from market_intelligence.bse_scraper import run_bse_scraper, StockPriceMonitor
 from market_intelligence.intelligence_agent import run_market_agent
 from market_intelligence.correlation_engine import run_correlation_analysis
@@ -423,6 +424,17 @@ def _safe_pipeline(config: dict):
         run_pipeline(config)
     except Exception as e:
         console.print(f"[red]⚠️ Scan failed (will retry next cycle): {e}[/red]")
+
+    # ── Customer pipeline: renewals + daily summary ────────
+    try:
+        now = datetime.now()
+        # Run renewal reminders on every cycle
+        run_renewal_check()
+        # Post revenue summary once per day (on the 6am cycle)
+        if now.hour < 7:
+            post_revenue_summary()
+    except Exception as e:
+        console.print(f"[yellow]⚠️ Customer pipeline step failed (non-fatal): {e}[/yellow]")
 
 
 def run_scheduled(config: dict):

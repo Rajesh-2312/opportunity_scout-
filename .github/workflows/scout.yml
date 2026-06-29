@@ -29,26 +29,50 @@ jobs:
 
       - name: Write .env from GitHub Secrets
         run: |
-          cat > .env << EOF
+          cat > .env << 'ENVEOF'
           NVIDIA_API_KEY=${{ secrets.NVIDIA_API_KEY }}
           NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
           NVIDIA_MODEL=meta/llama-3.1-8b-instruct
           TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_CHANNEL_ID=${{ secrets.TELEGRAM_CHANNEL_ID }}
-          RAZORPAY_PAYMENT_LINK=${{ secrets.RAZORPAY_PAYMENT_LINK }}
-          TARGET_SECTORS=infrastructure,energy,ports,logistics,airports,green hydrogen
-          TARGET_STATES=Andhra Pradesh,Telangana,Karnataka,Tamil Nadu
+          TELEGRAM_PAID_GROUP_ID=${{ secrets.TELEGRAM_PAID_GROUP_ID }}
+          RAZORPAY_PAYMENT_LINK=https://razorpay.me/@marojurajesh
+          TARGET_SECTORS=infrastructure,energy,ports,logistics,airports,green hydrogen,cement,data center
+          TARGET_STATES=Andhra Pradesh,Telangana,Karnataka,Tamil Nadu,Maharashtra
           MIN_TENDER_VALUE_LAKHS=10
+          SCAN_INTERVAL_HOURS=6
           AUTHOR_NAME=Rajesh M.
           NEWSLETTER_NAME=India Infra Intelligence
-          EOF
+          SUBSTACK_URL=https://indiainfra.substack.com
+          LINKEDIN_URL=https://linkedin.com/in/rajesh-maroju-754a65332
+          DASHBOARD_PORT=8000
+          ENVEOF
+
+      - name: Restore subscriber database
+        uses: actions/cache@v4
+        with:
+          path: data/subscribers.json
+          key: subscribers-db-${{ github.ref }}
+          restore-keys: subscribers-db-
+
+      - name: Run renewal reminders + revenue summary
+        run: python monetization/customer_pipeline.py check && python monetization/customer_pipeline.py summary
+        env:
+          PYTHONUNBUFFERED: "1"
 
       - name: Run Opportunity Scout
         run: python main.py --full
         env:
           PYTHONUNBUFFERED: "1"
           PYTHONUTF8: "1"
+
+      - name: Save subscriber database
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: data/subscribers.json
+          key: subscribers-db-${{ github.ref }}-${{ github.run_number }}
 
       - name: Upload reports as artifacts
         uses: actions/upload-artifact@v4
@@ -58,4 +82,5 @@ jobs:
           path: |
             reports/
             data/pipeline_results_*.json
+            data/subscribers.json
           retention-days: 7

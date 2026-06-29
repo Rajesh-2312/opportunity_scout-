@@ -91,6 +91,44 @@ class TelegramListener:
         cmds = [{"command": c, "description": d} for c, d in COMMANDS]
         self._api("setMyCommands", commands=cmds)
 
+    # ── subscriber authorization ─────────────────────────
+    SUBSCRIBER_DB = "./data/subscribers.json"
+
+    def _is_subscriber(self, chat_id) -> bool:
+        """
+        Returns True if chat_id belongs to an active paying subscriber.
+        Matches against telegram_id field (stored as string or int).
+        Owner's personal chat_id always passes (so you can test commands yourself).
+        """
+        if str(chat_id) == str(self.chat_id):
+            return True  # owner always authorized
+        try:
+            with open(self.SUBSCRIBER_DB, encoding="utf-8") as f:
+                data = json.load(f)
+            for sub in data.get("subscribers", []):
+                if sub.get("status") != "active":
+                    continue
+                tid = str(sub.get("telegram_id", "")).strip().lstrip("@")
+                cid = str(chat_id).strip().lstrip("@")
+                if tid and tid == cid:
+                    return True
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+        return False
+
+    def _send_paywall(self, chat_id):
+        razorpay = os.getenv("RAZORPAY_PAYMENT_LINK", "https://razorpay.me/@marojurajesh")
+        channel = os.getenv("TELEGRAM_CHANNEL_ID", "@opportunity_scout")
+        self.send(
+            f"🔒 <b>Premium subscribers only</b>\n\n"
+            f"This command is available to active subscribers of <b>India Infra Intelligence</b>.\n\n"
+            f"💼 <b>Subscribe now — ₹299/month</b>\n"
+            f"👉 {razorpay}\n\n"
+            f"📡 Free daily alerts: {channel}\n"
+            f"Questions? Message @marojurajesh directly.",
+            chat_id
+        )
+
     # ── data helpers ─────────────────────────────────────
     @staticmethod
     def _latest_pipeline() -> dict:
@@ -103,12 +141,25 @@ class TelegramListener:
         return {}
 
     # ── command handlers ─────────────────────────────────
+    # Commands that anyone can run (free / public)
+    FREE_COMMANDS = {"start", "help", ""}
+
     def handle(self, text: str, chat_id):
         cmd = text.strip().lower().lstrip("/").split("@")[0].split()[0] if text.strip() else ""
 
-        if cmd in ("start", "help", ""):
+        # Free commands — no auth check
+        if cmd in self.FREE_COMMANDS:
             self.send(self._menu(), chat_id)
-        elif cmd in ("latest", "opportunities"):
+            return
+
+        # All other commands require an active subscription
+        if not self._is_subscriber(chat_id):
+            console.print(f"[yellow]⛔ Blocked non-subscriber {chat_id} from /{cmd}[/yellow]")
+            self._send_paywall(chat_id)
+            return
+
+        # Authorized — run the command
+        if cmd in ("latest", "opportunities"):
             self.send(self._latest_opps(), chat_id)
         elif cmd == "insights":
             self.send(self._insights(), chat_id)

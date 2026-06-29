@@ -31,9 +31,10 @@ class ChannelPublisher:
 
     def __init__(self):
         self.token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-        self.channel_id = os.getenv("TELEGRAM_CHANNEL_ID", "")  # e.g. @IndiaInfraScout
-        self.private_chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
-        self.razorpay_link = os.getenv("RAZORPAY_PAYMENT_LINK", "https://razorpay.me/your-link")
+        self.channel_id = os.getenv("TELEGRAM_CHANNEL_ID", "")    # public channel e.g. @opportunity_scout
+        self.private_chat_id = os.getenv("TELEGRAM_CHAT_ID", "")  # your personal chat (owner)
+        self.paid_group_id = os.getenv("TELEGRAM_PAID_GROUP_ID", "")  # private paid subscribers group
+        self.razorpay_link = os.getenv("RAZORPAY_PAYMENT_LINK", "https://razorpay.me/@marojurajesh")
         self.enabled = bool(self.token and self.channel_id and
                            self.token != "your_telegram_bot_token_here")
 
@@ -187,13 +188,20 @@ class ChannelPublisher:
         if results["public_post"]:
             console.print("[green]✅ Public teaser posted![/green]")
 
-        # ── Premium full report ─────────────────────────
+        # ── Premium full report → paid group (or owner chat as fallback) ──
         await asyncio.sleep(1)
         premium = self._format_premium_post(top_opportunities, sector_insights)
-        results["premium_post"] = await self._send(self.private_chat_id, premium)
+
+        premium_target = self.paid_group_id if self.paid_group_id else self.private_chat_id
+        if not self.paid_group_id:
+            console.print("[yellow]⚠️  TELEGRAM_PAID_GROUP_ID not set — sending premium digest to owner chat as fallback.[/yellow]")
+            console.print("[yellow]   Create a private group, add the bot as admin, set TELEGRAM_PAID_GROUP_ID in .env[/yellow]")
+
+        results["premium_post"] = await self._send(premium_target, premium)
 
         if results["premium_post"]:
-            console.print("[green]✅ Premium digest sent to subscribers![/green]")
+            dest = "paid subscribers group" if self.paid_group_id else "owner chat (fallback)"
+            console.print(f"[green]✅ Premium digest sent to {dest}![/green]")
 
         return results
 
